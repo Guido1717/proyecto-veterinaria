@@ -1,5 +1,5 @@
 from src.entities.dueno import Dueno
-
+   # Lista en memoria que almacena los dueños registrados
 duenos = []
 siguiente_id = 1
 
