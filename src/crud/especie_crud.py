@@ -1,5 +1,6 @@
 from src.entities.especie import Especie
 
+# Lista en memoria que almacena las especies registradas
 especies = []
 siguiente_id = 1
 
