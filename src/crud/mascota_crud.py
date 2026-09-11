@@ -1,44 +1,73 @@
-from src.entities.mascota import Mascota
-from src.crud.especie_crud import obtener_especie
-from src.crud.dueno_crud import obtener_dueno
+from src.database.connection import SessionLocal
+from src.database.models import Mascota
 
-mascotas = []
-siguiente_id = 1
 
 def crear_mascota(nombre, edad, especie_id, dueno_id):
-    global siguiente_id
-    if not obtener_especie(especie_id):
-        print("Error: la especie no existe")
-        return None
-    if not obtener_dueno(dueno_id):
-        print("Error: el dueño no existe")
-        return None
-    nueva = Mascota(siguiente_id, nombre, edad, especie_id, dueno_id)
-    mascotas.append(nueva)
-    siguiente_id += 1
-    return nueva
+    session = SessionLocal()
+    try:
+        # Validamos que existan la especie y el dueño usando el mismo session
+        # (más eficiente que abrir sesiones nuevas con obtener_especie/obtener_dueno)
+        from src.database.models import Especie, Dueno
+
+        especie = session.query(Especie).filter(Especie.id == especie_id).first()
+        if not especie:
+            print("Error: la especie no existe")
+            return None
+
+        dueno = session.query(Dueno).filter(Dueno.id == dueno_id).first()
+        if not dueno:
+            print("Error: el dueño no existe")
+            return None
+
+        nueva = Mascota(nombre=nombre, edad=edad, especie_id=especie_id, dueno_id=dueno_id)
+        session.add(nueva)
+        session.commit()
+        session.refresh(nueva)
+        return nueva
+    finally:
+        session.close()
+
 
 def listar_mascotas():
-    return mascotas
+    session = SessionLocal()
+    try:
+        return session.query(Mascota).all()
+    finally:
+        session.close()
+
 
 def obtener_mascota(id):
-    for m in mascotas:
-        if m.id == id:
-            return m
-    return None
+    session = SessionLocal()
+    try:
+        return session.query(Mascota).filter(Mascota.id == id).first()
+    finally:
+        session.close()
+
 
 def actualizar_mascota(id, nombre=None, edad=None):
-    mascota = obtener_mascota(id)
-    if mascota:
-        if nombre:
-            mascota.nombre = nombre
-        if edad:
-            mascota.edad = edad
-    return mascota
+    session = SessionLocal()
+    try:
+        mascota = session.query(Mascota).filter(Mascota.id == id).first()
+        if mascota:
+            if nombre:
+                mascota.nombre = nombre
+            if edad:
+                mascota.edad = edad
+            session.commit()
+            session.refresh(mascota)
+        return mascota
+    finally:
+        session.close()
+
 
 def eliminar_mascota(id):
-    mascota = obtener_mascota(id)
-    if mascota:
-        mascotas.remove(mascota)
-        return True
-    return False
+    session = SessionLocal()
+    try:
+        mascota = session.query(Mascota).filter(Mascota.id == id).first()
+        if mascota:
+            session.delete(mascota)
+            session.commit()
+            return True
+        return False
+    finally:
+        session.close()

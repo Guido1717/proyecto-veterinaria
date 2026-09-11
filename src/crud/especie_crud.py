@@ -1,37 +1,59 @@
-from src.entities.especie import Especie
+from src.database.connection import SessionLocal
+from src.database.models import Especie
 
-# Lista en memoria que almacena las especies registradas
-especies = []
-siguiente_id = 1
 
 def crear_especie(nombre, descripcion=""):
-    global siguiente_id
-    nueva = Especie(siguiente_id, nombre, descripcion)
-    especies.append(nueva)
-    siguiente_id += 1
-    return nueva
+    session = SessionLocal()
+    try:
+        nueva = Especie(nombre=nombre, descripcion=descripcion)
+        session.add(nueva)
+        session.commit()
+        session.refresh(nueva)
+        return nueva
+    finally:
+        session.close()
+
 
 def listar_especies():
-    return especies
+    session = SessionLocal()
+    try:
+        return session.query(Especie).all()
+    finally:
+        session.close()
+
 
 def obtener_especie(id):
-    for e in especies:
-        if e.id == id:
-            return e
-    return None
+    session = SessionLocal()
+    try:
+        return session.query(Especie).filter(Especie.id == id).first()
+    finally:
+        session.close()
+
 
 def actualizar_especie(id, nombre=None, descripcion=None):
-    especie = obtener_especie(id)
-    if especie:
-        if nombre:
-            especie.nombre = nombre
-        if descripcion:
-            especie.descripcion = descripcion
-    return especie
+    session = SessionLocal()
+    try:
+        especie = session.query(Especie).filter(Especie.id == id).first()
+        if especie:
+            if nombre:
+                especie.nombre = nombre
+            if descripcion:
+                especie.descripcion = descripcion
+            session.commit()
+            session.refresh(especie)
+        return especie
+    finally:
+        session.close()
+
 
 def eliminar_especie(id):
-    especie = obtener_especie(id)
-    if especie:
-        especies.remove(especie)
-        return True
-    return False
+    session = SessionLocal()
+    try:
+        especie = session.query(Especie).filter(Especie.id == id).first()
+        if especie:
+            session.delete(especie)
+            session.commit()
+            return True
+        return False
+    finally:
+        session.close()
