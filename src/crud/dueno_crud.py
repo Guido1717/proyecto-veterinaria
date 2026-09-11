@@ -59,3 +59,4 @@ def eliminar_dueno(id):
         return False
     finally:
         session.close()
+        session.close()

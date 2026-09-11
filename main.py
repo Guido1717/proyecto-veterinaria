@@ -62,7 +62,6 @@ print("Tratamientos:", [(t.id, t.medicamento) for t in listar_tratamientos()])
 actualizar_mascota(m1.id, edad=6)
 actualizar_tratamiento(t1.id, duracion_dias=10)
 print("\n--- Después de actualizar edad de Toro y duración del tratamiento ---")
-mascota_actualizada = listar_mascotas()[-2] if len(listar_mascotas()) > 1 else listar_mascotas()[0]
 print("Edad actualizada:", [(m.id, m.nombre, m.edad) for m in listar_mascotas() if m.id == m1.id])
 print("Tratamiento actualizado:", [(t.id, t.medicamento, t.duracion_dias) for t in listar_tratamientos() if t.id == t1.id])
 
