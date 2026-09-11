@@ -1,42 +1,75 @@
-from src.entities.consulta import Consulta
-from src.crud.cita_crud import obtener_cita, actualizar_cita
+from src.database.connection import SessionLocal
+from src.database.models import Consulta, Cita
 
-consultas = []
-siguiente_id = 1
 
 def crear_consulta(cita_id, diagnostico, observaciones=""):
-    global siguiente_id
-    cita = obtener_cita(cita_id)
-    if not cita:
-        print("Error: la cita no existe")
-        return None
-    nueva = Consulta(siguiente_id, cita_id, diagnostico, observaciones)
-    consultas.append(nueva)
-    siguiente_id += 1
-    actualizar_cita(cita_id, estado="atendida")
-    return nueva
+    session = SessionLocal()
+    try:
+        cita = session.query(Cita).filter(Cita.id == cita_id).first()
+        if not cita:
+            print("Error: la cita no existe")
+            return None
+
+        if cita.consulta:
+            print("Error: esta cita ya tiene una consulta registrada")
+            return None
+
+        nueva = Consulta(
+            cita_id=cita_id,
+            diagnostico=diagnostico,
+            observaciones=observaciones,
+        )
+        session.add(nueva)
+
+        cita.estado = "atendida"
+
+        session.commit()
+        session.refresh(nueva)
+        return nueva
+    finally:
+        session.close()
+
 
 def listar_consultas():
-    return consultas
+    session = SessionLocal()
+    try:
+        return session.query(Consulta).all()
+    finally:
+        session.close()
+
 
 def obtener_consulta(id):
-    for c in consultas:
-        if c.id == id:
-            return c
-    return None
+    session = SessionLocal()
+    try:
+        return session.query(Consulta).filter(Consulta.id == id).first()
+    finally:
+        session.close()
+
 
 def actualizar_consulta(id, diagnostico=None, observaciones=None):
-    consulta = obtener_consulta(id)
-    if consulta:
-        if diagnostico:
-            consulta.diagnostico = diagnostico
-        if observaciones:
-            consulta.observaciones = observaciones
-    return consulta
+    session = SessionLocal()
+    try:
+        consulta = session.query(Consulta).filter(Consulta.id == id).first()
+        if consulta:
+            if diagnostico:
+                consulta.diagnostico = diagnostico
+            if observaciones:
+                consulta.observaciones = observaciones
+            session.commit()
+            session.refresh(consulta)
+        return consulta
+    finally:
+        session.close()
+
 
 def eliminar_consulta(id):
-    consulta = obtener_consulta(id)
-    if consulta:
-        consultas.remove(consulta)
-        return True
-    return False
+    session = SessionLocal()
+    try:
+        consulta = session.query(Consulta).filter(Consulta.id == id).first()
+        if consulta:
+            session.delete(consulta)
+            session.commit()
+            return True
+        return False
+    finally:
+        session.close()

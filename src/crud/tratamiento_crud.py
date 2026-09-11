@@ -1,40 +1,63 @@
-from src.entities.tratamiento import Tratamiento
-from src.crud.consulta_crud import obtener_consulta
+from src.database.connection import SessionLocal
+from src.database.models import Tratamiento, Consulta
 
-tratamientos = []
-siguiente_id = 1
 
 def crear_tratamiento(consulta_id, medicamento, duracion_dias):
-    global siguiente_id
-    if not obtener_consulta(consulta_id):
-        print("Error: la consulta no existe")
-        return None
-    nuevo = Tratamiento(siguiente_id, consulta_id, medicamento, duracion_dias)
-    tratamientos.append(nuevo)
-    siguiente_id += 1
-    return nuevo
+    session = SessionLocal()
+    try:
+        consulta = session.query(Consulta).filter(Consulta.id == consulta_id).first()
+        if not consulta:
+            print("Error: la consulta no existe")
+            return None
+        nuevo = Tratamiento(consulta_id=consulta_id, medicamento=medicamento, duracion_dias=duracion_dias)
+        session.add(nuevo)
+        session.commit()
+        session.refresh(nuevo)
+        return nuevo
+    finally:
+        session.close()
+
 
 def listar_tratamientos():
-    return tratamientos
+    session = SessionLocal()
+    try:
+        return session.query(Tratamiento).all()
+    finally:
+        session.close()
+
 
 def obtener_tratamiento(id):
-    for t in tratamientos:
-        if t.id == id:
-            return t
-    return None
+    session = SessionLocal()
+    try:
+        return session.query(Tratamiento).filter(Tratamiento.id == id).first()
+    finally:
+        session.close()
+
 
 def actualizar_tratamiento(id, medicamento=None, duracion_dias=None):
-    tratamiento = obtener_tratamiento(id)
-    if tratamiento:
-        if medicamento:
-            tratamiento.medicamento = medicamento
-        if duracion_dias:
-            tratamiento.duracion_dias = duracion_dias
-    return tratamiento
+    session = SessionLocal()
+    try:
+        tratamiento = session.query(Tratamiento).filter(Tratamiento.id == id).first()
+        if tratamiento:
+            if medicamento:
+                tratamiento.medicamento = medicamento
+            if duracion_dias:
+                tratamiento.duracion_dias = duracion_dias
+            session.commit()
+            session.refresh(tratamiento)
+        return tratamiento
+    finally:
+        session.close()
+
 
 def eliminar_tratamiento(id):
-    tratamiento = obtener_tratamiento(id)
-    if tratamiento:
-        tratamientos.remove(tratamiento)
-        return True
-    return False
+    session = SessionLocal()
+    try:
+        tratamiento = session.query(Tratamiento).filter(Tratamiento.id == id).first()
+        if tratamiento:
+            session.delete(tratamiento)
+            session.commit()
+            return True
+        return False
+    finally:
+        session.close()

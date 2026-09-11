@@ -1,38 +1,61 @@
-from src.entities.dueno import Dueno
+from src.database.connection import SessionLocal
+from src.database.models import Dueno
 
-duenos = []
-siguiente_id = 1
 
 def crear_dueno(nombre, telefono, direccion=""):
-    global siguiente_id
-    nuevo = Dueno(siguiente_id, nombre, telefono, direccion)
-    duenos.append(nuevo)
-    siguiente_id += 1
-    return nuevo
+    session = SessionLocal()
+    try:
+        nuevo = Dueno(nombre=nombre, telefono=telefono, direccion=direccion)
+        session.add(nuevo)
+        session.commit()
+        session.refresh(nuevo)
+        return nuevo
+    finally:
+        session.close()
+
 
 def listar_duenos():
-    return duenos
+    session = SessionLocal()
+    try:
+        return session.query(Dueno).all()
+    finally:
+        session.close()
+
 
 def obtener_dueno(id):
-    for d in duenos:
-        if d.id == id:
-            return d
-    return None
+    session = SessionLocal()
+    try:
+        return session.query(Dueno).filter(Dueno.id == id).first()
+    finally:
+        session.close()
+
 
 def actualizar_dueno(id, nombre=None, telefono=None, direccion=None):
-    dueno = obtener_dueno(id)
-    if dueno:
-        if nombre:
-            dueno.nombre = nombre
-        if telefono:
-            dueno.telefono = telefono
-        if direccion:
-            dueno.direccion = direccion
-    return dueno
+    session = SessionLocal()
+    try:
+        dueno = session.query(Dueno).filter(Dueno.id == id).first()
+        if dueno:
+            if nombre:
+                dueno.nombre = nombre
+            if telefono:
+                dueno.telefono = telefono
+            if direccion:
+                dueno.direccion = direccion
+            session.commit()
+            session.refresh(dueno)
+        return dueno
+    finally:
+        session.close()
+
 
 def eliminar_dueno(id):
-    dueno = obtener_dueno(id)
-    if dueno:
-        duenos.remove(dueno)
-        return True
-    return False
+    session = SessionLocal()
+    try:
+        dueno = session.query(Dueno).filter(Dueno.id == id).first()
+        if dueno:
+            session.delete(dueno)
+            session.commit()
+            return True
+        return False
+    finally:
+        session.close()
