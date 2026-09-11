@@ -1,38 +1,61 @@
-from src.entities.veterinario import Veterinario
+from src.database.connection import SessionLocal
+from src.database.models import Veterinario
 
-veterinarios = []
-siguiente_id = 1
 
 def crear_veterinario(nombre, especialidad, telefono):
-    global siguiente_id
-    nuevo = Veterinario(siguiente_id, nombre, especialidad, telefono)
-    veterinarios.append(nuevo)
-    siguiente_id += 1
-    return nuevo
+    session = SessionLocal()
+    try:
+        nuevo = Veterinario(nombre=nombre, especialidad=especialidad, telefono=telefono)
+        session.add(nuevo)
+        session.commit()
+        session.refresh(nuevo)
+        return nuevo
+    finally:
+        session.close()
+
 
 def listar_veterinarios():
-    return veterinarios
+    session = SessionLocal()
+    try:
+        return session.query(Veterinario).all()
+    finally:
+        session.close()
+
 
 def obtener_veterinario(id):
-    for v in veterinarios:
-        if v.id == id:
-            return v
-    return None
+    session = SessionLocal()
+    try:
+        return session.query(Veterinario).filter(Veterinario.id == id).first()
+    finally:
+        session.close()
+
 
 def actualizar_veterinario(id, nombre=None, especialidad=None, telefono=None):
-    veterinario = obtener_veterinario(id)
-    if veterinario:
-        if nombre:
-            veterinario.nombre = nombre
-        if especialidad:
-            veterinario.especialidad = especialidad
-        if telefono:
-            veterinario.telefono = telefono
-    return veterinario
+    session = SessionLocal()
+    try:
+        veterinario = session.query(Veterinario).filter(Veterinario.id == id).first()
+        if veterinario:
+            if nombre:
+                veterinario.nombre = nombre
+            if especialidad:
+                veterinario.especialidad = especialidad
+            if telefono:
+                veterinario.telefono = telefono
+            session.commit()
+            session.refresh(veterinario)
+        return veterinario
+    finally:
+        session.close()
+
 
 def eliminar_veterinario(id):
-    veterinario = obtener_veterinario(id)
-    if veterinario:
-        veterinarios.remove(veterinario)
-        return True
-    return False
+    session = SessionLocal()
+    try:
+        veterinario = session.query(Veterinario).filter(Veterinario.id == id).first()
+        if veterinario:
+            session.delete(veterinario)
+            session.commit()
+            return True
+        return False
+    finally:
+        session.close()
