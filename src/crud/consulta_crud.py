@@ -1,75 +1,57 @@
-from src.database.connection import SessionLocal
-from src.database.models import Consulta, Cita
+"""Operaciones CRUD de la entidad Consulta.
+
+Regla de negocio: una cita tiene como máximo una consulta. Al registrarla,
+la cita pasa a estado "atendida".
+"""
+from sqlalchemy.orm import Session
+
+from src.crud.base import (
+    aplicar_cambios,
+    eliminar,
+    guardar,
+    listar,
+    obtener_o_error,
+    validar_referencia,
+)
+from src.crud.excepciones import ConflictoIntegridad
+from src.database.models import Cita, Consulta
+from src.schemas.consulta import ConsultaCreate, ConsultaUpdate
+
+ENTIDAD = "La consulta"
+ESTADO_ATENDIDA = "atendida"
 
 
-def crear_consulta(cita_id, diagnostico, observaciones=""):
-    session = SessionLocal()
-    try:
-        cita = session.query(Cita).filter(Cita.id == cita_id).first()
-        if not cita:
-            print("Error: la cita no existe")
-            return None
-
-        if cita.consulta:
-            print("Error: esta cita ya tiene una consulta registrada")
-            return None
-
-        nueva = Consulta(
-            cita_id=cita_id,
-            diagnostico=diagnostico,
-            observaciones=observaciones,
+def crear_consulta(db: Session, datos: ConsultaCreate) -> Consulta:
+    cita = validar_referencia(db, Cita, datos.cita_id, "La cita")
+    if cita.consulta is not None:
+        raise ConflictoIntegridad(
+            f"La cita con id {cita.id} ya tiene una consulta registrada"
         )
-        session.add(nueva)
 
-        cita.estado = "atendida"
-
-        session.commit()
-        session.refresh(nueva)
-        return nueva
-    finally:
-        session.close()
+    consulta = Consulta(**datos.model_dump())
+    cita.estado = ESTADO_ATENDIDA
+    return guardar(db, consulta)
 
 
-def listar_consultas():
-    session = SessionLocal()
-    try:
-        return session.query(Consulta).all()
-    finally:
-        session.close()
+def listar_consultas(db: Session) -> list[Consulta]:
+    return listar(db, Consulta)
 
 
-def obtener_consulta(id):
-    session = SessionLocal()
-    try:
-        return session.query(Consulta).filter(Consulta.id == id).first()
-    finally:
-        session.close()
+def obtener_consulta(db: Session, consulta_id: int) -> Consulta:
+    return obtener_o_error(db, Consulta, consulta_id, ENTIDAD)
 
 
-def actualizar_consulta(id, diagnostico=None, observaciones=None):
-    session = SessionLocal()
-    try:
-        consulta = session.query(Consulta).filter(Consulta.id == id).first()
-        if consulta:
-            if diagnostico:
-                consulta.diagnostico = diagnostico
-            if observaciones:
-                consulta.observaciones = observaciones
-            session.commit()
-            session.refresh(consulta)
-        return consulta
-    finally:
-        session.close()
+def actualizar_consulta(
+    db: Session, consulta_id: int, datos: ConsultaUpdate
+) -> Consulta:
+    consulta = obtener_consulta(db, consulta_id)
+    aplicar_cambios(consulta, datos.model_dump(exclude_unset=True))
+    return guardar(db, consulta)
 
 
-def eliminar_consulta(id):
-    session = SessionLocal()
-    try:
-        consulta = session.query(Consulta).filter(Consulta.id == id).first()
-        if consulta:
-            session.delete(consulta)
-            session.commit()
-            return True
-        return False
-    finally:
-        session.close()
+def eliminar_consulta(db: Session, consulta_id: int) -> None:
+    consulta = obtener_consulta(db, consulta_id)
+    eliminar(db, consulta, {
+        "tratamientos": "No se puede eliminar la consulta porque tiene "
+                        "tratamientos asociados",
+    })
