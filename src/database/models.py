@@ -57,7 +57,9 @@ class Cita(Base):
     fecha = Column(Date, nullable=False)
     estado = Column(String(20), default="pendiente")
     mascota_id = Column(Integer, ForeignKey("mascotas.id"), nullable=False)
-    veterinario_id = Column(Integer, ForeignKey("veterinarios.id"), nullable=False)
+    veterinario_id = Column(
+        Integer, ForeignKey("veterinarios.id"), nullable=False
+    )
 
     mascota = relationship("Mascota", back_populates="citas")
     veterinario = relationship("Veterinario", back_populates="citas")
@@ -70,7 +72,10 @@ class Consulta(Base):
     id = Column(Integer, primary_key=True)
     diagnostico = Column(String(300), nullable=False)
     observaciones = Column(String(300), default="")
-    cita_id = Column(Integer, ForeignKey("citas.id"), nullable=False)
+    # unique=True: una cita solo puede tener una consulta (relación 1-1).
+    cita_id = Column(
+        Integer, ForeignKey("citas.id"), nullable=False, unique=True
+    )
 
     cita = relationship("Cita", back_populates="consulta")
     tratamientos = relationship("Tratamiento", back_populates="consulta")

@@ -1,63 +1,50 @@
-from src.database.connection import SessionLocal
-from src.database.models import Tratamiento, Consulta
+"""Operaciones CRUD de la entidad Tratamiento."""
+from sqlalchemy.orm import Session
+
+from src.crud.base import (
+    aplicar_cambios,
+    eliminar,
+    guardar,
+    listar,
+    obtener_o_error,
+    validar_referencia,
+)
+from src.database.models import Consulta, Tratamiento
+from src.schemas.tratamiento import TratamientoCreate, TratamientoUpdate
+
+ENTIDAD = "El tratamiento"
 
 
-def crear_tratamiento(consulta_id, medicamento, duracion_dias):
-    session = SessionLocal()
-    try:
-        consulta = session.query(Consulta).filter(Consulta.id == consulta_id).first()
-        if not consulta:
-            print("Error: la consulta no existe")
-            return None
-        nuevo = Tratamiento(consulta_id=consulta_id, medicamento=medicamento, duracion_dias=duracion_dias)
-        session.add(nuevo)
-        session.commit()
-        session.refresh(nuevo)
-        return nuevo
-    finally:
-        session.close()
+def _validar_referencias(db: Session, cambios: dict) -> None:
+    if "consulta_id" in cambios:
+        validar_referencia(
+            db, Consulta, cambios["consulta_id"], "La consulta"
+        )
 
 
-def listar_tratamientos():
-    session = SessionLocal()
-    try:
-        return session.query(Tratamiento).all()
-    finally:
-        session.close()
+def crear_tratamiento(db: Session, datos: TratamientoCreate) -> Tratamiento:
+    valores = datos.model_dump()
+    _validar_referencias(db, valores)
+    return guardar(db, Tratamiento(**valores))
 
 
-def obtener_tratamiento(id):
-    session = SessionLocal()
-    try:
-        return session.query(Tratamiento).filter(Tratamiento.id == id).first()
-    finally:
-        session.close()
+def listar_tratamientos(db: Session) -> list[Tratamiento]:
+    return listar(db, Tratamiento)
 
 
-def actualizar_tratamiento(id, medicamento=None, duracion_dias=None):
-    session = SessionLocal()
-    try:
-        tratamiento = session.query(Tratamiento).filter(Tratamiento.id == id).first()
-        if tratamiento:
-            if medicamento:
-                tratamiento.medicamento = medicamento
-            if duracion_dias:
-                tratamiento.duracion_dias = duracion_dias
-            session.commit()
-            session.refresh(tratamiento)
-        return tratamiento
-    finally:
-        session.close()
+def obtener_tratamiento(db: Session, tratamiento_id: int) -> Tratamiento:
+    return obtener_o_error(db, Tratamiento, tratamiento_id, ENTIDAD)
 
 
-def eliminar_tratamiento(id):
-    session = SessionLocal()
-    try:
-        tratamiento = session.query(Tratamiento).filter(Tratamiento.id == id).first()
-        if tratamiento:
-            session.delete(tratamiento)
-            session.commit()
-            return True
-        return False
-    finally:
-        session.close()
+def actualizar_tratamiento(
+    db: Session, tratamiento_id: int, datos: TratamientoUpdate
+) -> Tratamiento:
+    tratamiento = obtener_tratamiento(db, tratamiento_id)
+    cambios = datos.model_dump(exclude_unset=True)
+    _validar_referencias(db, cambios)
+    aplicar_cambios(tratamiento, cambios)
+    return guardar(db, tratamiento)
+
+
+def eliminar_tratamiento(db: Session, tratamiento_id: int) -> None:
+    eliminar(db, obtener_tratamiento(db, tratamiento_id), {})

@@ -1,62 +1,40 @@
-from src.database.connection import SessionLocal
+"""Operaciones CRUD de la entidad Dueno."""
+from sqlalchemy.orm import Session
+
+from src.crud.base import (
+    aplicar_cambios,
+    eliminar,
+    guardar,
+    listar,
+    obtener_o_error,
+)
 from src.database.models import Dueno
+from src.schemas.dueno import DuenoCreate, DuenoUpdate
+
+ENTIDAD = "El dueño"
 
 
-def crear_dueno(nombre, telefono, direccion=""):
-    session = SessionLocal()
-    try:
-        nuevo = Dueno(nombre=nombre, telefono=telefono, direccion=direccion)
-        session.add(nuevo)
-        session.commit()
-        session.refresh(nuevo)
-        return nuevo
-    finally:
-        session.close()
+def crear_dueno(db: Session, datos: DuenoCreate) -> Dueno:
+    return guardar(db, Dueno(**datos.model_dump()))
 
 
-def listar_duenos():
-    session = SessionLocal()
-    try:
-        return session.query(Dueno).all()
-    finally:
-        session.close()
+def listar_duenos(db: Session) -> list[Dueno]:
+    return listar(db, Dueno)
 
 
-def obtener_dueno(id):
-    session = SessionLocal()
-    try:
-        return session.query(Dueno).filter(Dueno.id == id).first()
-    finally:
-        session.close()
+def obtener_dueno(db: Session, dueno_id: int) -> Dueno:
+    return obtener_o_error(db, Dueno, dueno_id, ENTIDAD)
 
 
-def actualizar_dueno(id, nombre=None, telefono=None, direccion=None):
-    session = SessionLocal()
-    try:
-        dueno = session.query(Dueno).filter(Dueno.id == id).first()
-        if dueno:
-            if nombre:
-                dueno.nombre = nombre
-            if telefono:
-                dueno.telefono = telefono
-            if direccion:
-                dueno.direccion = direccion
-            session.commit()
-            session.refresh(dueno)
-        return dueno
-    finally:
-        session.close()
+def actualizar_dueno(db: Session, dueno_id: int, datos: DuenoUpdate) -> Dueno:
+    dueno = obtener_dueno(db, dueno_id)
+    aplicar_cambios(dueno, datos.model_dump(exclude_unset=True))
+    return guardar(db, dueno)
 
 
-def eliminar_dueno(id):
-    session = SessionLocal()
-    try:
-        dueno = session.query(Dueno).filter(Dueno.id == id).first()
-        if dueno:
-            session.delete(dueno)
-            session.commit()
-            return True
-        return False
-    finally:
-        session.close()
-        session.close()
+def eliminar_dueno(db: Session, dueno_id: int) -> None:
+    dueno = obtener_dueno(db, dueno_id)
+    eliminar(db, dueno, {
+        "mascotas": "No se puede eliminar el dueño porque tiene "
+                    "mascotas asociadas",
+    })
